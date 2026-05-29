@@ -1,0 +1,56 @@
+name: Build C++ Maze GUI Project
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    # --- 1. Linux（Ubuntu）環境のグラフィックスライブラリのインストール ---
+    - name: Install Dependencies (Linux)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y xorg-dev libgl1-mesa-dev libglu1-mesa-dev libglfw3-dev
+
+    # --- 2. 各OSでのビルドコマンドの実行 ---
+    # Windows (MSVCを使用)
+    - name: Build for Windows
+      if: matrix.os == 'windows-latest'
+      run: |
+        cl.exe /EHsc /std:c++17 /I. /Iimgui /Iimgui/backends main.cpp imgui/*.cpp imgui/backends/imgui_impl_glfw.cpp imgui/backends/imgui_impl_opengl3.cpp /link /out:MazeGenerator.exe
+
+    # Linux (GCCを使用、グラフィックス関係をリンク)
+    - name: Build for Linux
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        g++ -std=c++17 -I. -Iimgui -Iimgui/backends main.cpp imgui/*.cpp imgui/backends/imgui_impl_glfw.cpp imgui/backends/imgui_impl_opengl3.cpp -lglfw -lGL -lX11 -lpthread -ldl -o MazeGenerator_linux
+
+    # Mac (Clangを使用、標準のFrameworkをリンク)
+    - name: Build for Mac
+      if: matrix.os == 'macos-latest'
+      run: |
+        brew install glfw
+        clang++ -std=c++17 -I. -Iimgui -Iimgui/backends -I$(brew --prefix glfw)/include main.cpp imgui/*.cpp imgui/backends/imgui_impl_glfw.cpp imgui/backends/imgui_impl_opengl3.cpp -L$(brew --prefix glfw)/lib -lglfw -framework OpenGL -framework Cocoa -framework IOKit -framework CoreVideo -o MazeGenerator_mac
+
+    # --- 3. 出来上がったバイナリを個別に保存 ---
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: MazeGenerator-${{ matrix.os }}
+        path: |
+          MazeGenerator.exe
+          MazeGenerator_linux
+          MazeGenerator_mac

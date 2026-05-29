@@ -15,10 +15,19 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
 
     steps:
+    # あなたのコードを取得
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    # --- 各OSごとの事前準備（GLFWのインストール） ---
+    # 【重要】Dear ImGui公式リポジトリを、エラーなしで「imgui」フォルダに最速ダウンロード
+    - name: Checkout Dear ImGui
+      uses: actions/checkout@v4
+      with:
+        repository: ocornut/imgui
+        ref: v1.90.4
+        path: imgui
+
+    # --- 各OSごとの事前準備 ---
     - name: Install Dependencies (Linux)
       if: matrix.os == 'ubuntu-latest'
       run: |
@@ -29,12 +38,6 @@ jobs:
       if: matrix.os == 'macos-latest'
       run: |
         brew install glfw
-
-    - name: Install Dependencies (Windows)
-      if: matrix.os == 'windows-latest'
-      run: |
-        # Windowsの環境構築（標準設定をそのまま利用）
-        echo "Initializing Windows..."
 
     # --- CMakeを使った共通のビルド手順 ---
     - name: Configure CMake

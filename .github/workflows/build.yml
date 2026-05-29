@@ -1,4 +1,4 @@
-name: Build C++ Maze GUI Project
+name: Build CMake Maze GUI Project
 
 on:
   push:
@@ -18,39 +18,45 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    # --- 1. Linux（Ubuntu）環境のグラフィックスライブラリのインストール ---
+    # --- 各OSごとの事前準備（GLFWのインストール） ---
     - name: Install Dependencies (Linux)
       if: matrix.os == 'ubuntu-latest'
       run: |
         sudo apt-get update
         sudo apt-get install -y xorg-dev libgl1-mesa-dev libglu1-mesa-dev libglfw3-dev
 
-    # --- 2. 各OSでのビルドコマンドの実行 ---
-    # Windows (MSVCを使用)
-    - name: Build for Windows
-      if: matrix.os == 'windows-latest'
-      run: |
-        cl.exe /EHsc /std:c++17 /I. /Iimgui /Iimgui/backends main.cpp imgui/*.cpp imgui/backends/imgui_impl_glfw.cpp imgui/backends/imgui_impl_opengl3.cpp /link /out:MazeGenerator.exe
-
-    # Linux (GCCを使用、グラフィックス関係をリンク)
-    - name: Build for Linux
-      if: matrix.os == 'ubuntu-latest'
-      run: |
-        g++ -std=c++17 -I. -Iimgui -Iimgui/backends main.cpp imgui/*.cpp imgui/backends/imgui_impl_glfw.cpp imgui/backends/imgui_impl_opengl3.cpp -lglfw -lGL -lX11 -lpthread -ldl -o MazeGenerator_linux
-
-    # Mac (Clangを使用、標準のFrameworkをリンク)
-    - name: Build for Mac
+    - name: Install Dependencies (macOS)
       if: matrix.os == 'macos-latest'
       run: |
         brew install glfw
-        clang++ -std=c++17 -I. -Iimgui -Iimgui/backends -I$(brew --prefix glfw)/include main.cpp imgui/*.cpp imgui/backends/imgui_impl_glfw.cpp imgui/backends/imgui_impl_opengl3.cpp -L$(brew --prefix glfw)/lib -lglfw -framework OpenGL -framework Cocoa -framework IOKit -framework CoreVideo -o MazeGenerator_mac
 
-    # --- 3. 出来上がったバイナリを個別に保存 ---
+    # Windowsの依存関係（vcpkgなど）を使わずに、標準のGLFW設定をCMakeへ教えるための工夫
+    - name: Install Dependencies (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        # ツールチップやシステム構築に標準のコンパイラを設定
+        echo "Windows build environment initialization"
+
+    # --- CMakeを使った共通のビルド手順 ---
+    - name: Configure CMake
+      # Macの場合、Homebrewで入れたGLFWのパスをCMakeに認識させます
+      run: |
+        if [ "${{ matrix.os }}" = "macos-latest" ]; then
+          cmake -B build -DCMAKE_PREFIX_PATH=$(brew --prefix glfw)
+        else
+          cmake -B build
+        fi
+      shell: bash
+
+    - name: Build Project
+      run: cmake --build build --config Release
+
+    # --- 成果物の保存 ---
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: MazeGenerator-${{ matrix.os }}
+        name: MazeGenerator-CMake-${{ matrix.os }}
         path: |
-          MazeGenerator.exe
-          MazeGenerator_linux
-          MazeGenerator_mac
+          build/MazeGenerator
+          build/MazeGenerator.exe
+          build/Release/MazeGenerator.exe

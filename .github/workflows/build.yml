@@ -30,16 +30,14 @@ jobs:
       run: |
         brew install glfw
 
-    # Windowsの依存関係（vcpkgなど）を使わずに、標準のGLFW設定をCMakeへ教えるための工夫
     - name: Install Dependencies (Windows)
       if: matrix.os == 'windows-latest'
       run: |
-        # ツールチップやシステム構築に標準のコンパイラを設定
-        echo "Windows build environment initialization"
+        # Windowsの環境構築（標準設定をそのまま利用）
+        echo "Initializing Windows..."
 
     # --- CMakeを使った共通のビルド手順 ---
     - name: Configure CMake
-      # Macの場合、Homebrewで入れたGLFWのパスをCMakeに認識させます
       run: |
         if [ "${{ matrix.os }}" = "macos-latest" ]; then
           cmake -B build -DCMAKE_PREFIX_PATH=$(brew --prefix glfw)
